@@ -1,0 +1,13 @@
+[package]
+name = "cef-sys"
+version = "0.1.0"
+authors = ["Peter Suggate <petersuggate@gmail.com>"]
+repository = "https://github.com/peter-suggate/cef-sys"
+build = "build.rs"
+
+[build-dependencies]
+bindgen = "0.49.2"
+
+[lib]
+name = "cef_sys"
+path = "src/lib.rs"
