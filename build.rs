@@ -40,7 +40,7 @@ fn generate_bindings() {
   // Write the bindings to the $OUT_DIR/bindings.rs file.
   let out_path = PathBuf::from(env_var("OUT_DIR"));
 
-  if !out_path.is_file() {
+  // if !out_path.is_file() {
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
     // the resulting bindings.
@@ -58,6 +58,9 @@ fn generate_bindings() {
       .rustfmt_bindings(true)
       // Cef is huge! Pull in only the things we need or else the generated bindings is very large.
       .whitelist_function("cef_execute_process")
+      .whitelist_function("cef_initialize")
+      .whitelist_function("cef_string_utf16_set")
+      .whitelist_function("cef_browser_host_create_browser")
       // Finish the builder and generate the bindings.
       .generate()
       // Unwrap the Result and panic on failure.
@@ -66,7 +69,7 @@ fn generate_bindings() {
     bindings
       .write_to_file(out_path.join("bindings.rs"))
       .expect("Couldn't write bindings!");
-  }
+  // }
 }
 
 fn config_linker() {
