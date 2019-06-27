@@ -59,8 +59,9 @@ fn generate_bindings() {
       // Cef is huge! Pull in only the things we need or else the generated bindings is very large.
       .whitelist_function("cef_execute_process")
       .whitelist_function("cef_initialize")
-      .whitelist_function("cef_string_utf16_set")
+      .whitelist_function("cef_do_message_loop_work")
       .whitelist_function("cef_browser_host_create_browser")
+      .whitelist_function("cef_browser_host_create_browser_sync")
       // Finish the builder and generate the bindings.
       .generate()
       // Unwrap the Result and panic on failure.
