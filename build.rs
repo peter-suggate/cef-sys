@@ -1,4 +1,5 @@
 extern crate bindgen;
+extern crate fs_extra;
 
 use std::env;
 use std::path::PathBuf;
@@ -73,95 +74,74 @@ fn generate_bindings() {
   // }
 }
 
+enum Platform {
+  Windows,
+  Mac,
+  Linux
+}
+
+fn get_platform() -> Platform {
+  match env::var("TARGET").unwrap().split('-').nth(2).unwrap() {
+    "win32" | "windows" => Platform::Windows,
+    "darwin" => Platform::Mac,
+    "linux" => Platform::Linux,
+    other => panic!("Sorry, platform \"{}\" is not supported by CEF.", other)
+  }
+}
+
+fn get_build_type() -> String {
+  match env::var("PROFILE").unwrap().as_str() {
+    "release" => String::from("Release"),
+    _ => String::from("Debug"),
+  }
+}
+
 fn config_linker() {
+  let lib_name = match get_platform() {
+      Platform::Mac => return, // CEF_PATH is not necessarily needed for Mac
+      Platform::Windows => "libcef",
+      Platform::Linux => "cef"
+  };
+
   // Tell the linker the lib name and the path
-  println!("cargo:rustc-link-lib=libcef");
+  println!("cargo:rustc-link-lib={}", lib_name);
   println!(
     "cargo:rustc-link-search={}",
-    cef_dir().join("Release").to_str().unwrap()
+    cef_dir().join(get_build_type()).to_str().unwrap()
   );
-  // cef_dir.join(if env::var("PROFILE") == "release" { "Release" } else { "Debug" }).to_str().unwrap());
+}
+
+fn cef_binary_dir_name() -> String {
+  match env::var("PROFILE").unwrap().as_str() {
+    "release" => String::from("Release"),
+    _ => String::from("Debug"),
+  }
+}
+
+fn copy_cef_binaries_to_target() {
+  let cef_binary_dir_name = cef_binary_dir_name();
+  let cef_binary_dir = cef_dir().join(cef_binary_dir_name);
+  let target_dir = env::var("CARGO_TARGET_DIR").unwrap();
+  // let target_dir = target_dir;
+  // let target_dir = env::var_os("CARGO_TARGET_DIR").expect("CARGO_TARGET_DIR not defined");
+
+  let options = fs_extra::dir::CopyOptions::new();
+
+  println!("Copying CEF binaries to target dir");
+  let result = fs_extra::dir::copy(cef_binary_dir, target_dir, &options);
+
+  match result {
+    Ok(_) => println!("Succeeded"),
+    Err(e) => println!("Failed with error: {}", e)
+  }
 }
 
 fn main() {
   create_wrapper_file();
   generate_bindings();
   config_linker();
+  copy_cef_binaries_to_target();
 }
-// extern crate bindgen;
-
-// use std::env;
-// use std::fs;
-// use std::path::PathBuf;
-// use std::io::Write;
-
-// fn main() {
-//     builder().build();
-// }
-
-// struct Builder {
-//     cef_dir: PathBuf
-// }
-
-// fn builder() -> Builder {
-//     Builder { cef_dir: PathBuf::from(env_var("CEF_DIR")) }
-// }
-
-// impl Builder {
-//     fn build(&self) {
-//         self.write_wrapper_file();
-//         self.generate_bindings();
-//         self.cargo_config();
-//     }
-
-//     fn write_wrapper_file(&self) {
-//         // Let's create a wrapper.h file if it's not there
-//         let wrapper_file = PathBuf::from(env_var("CARGO_MANIFEST_DIR")).join("wrapper.h");
-//         if !wrapper_file.is_file() {
-//             // We want to include all capi headers
-//             let include_files = fs::read_dir(self.cef_dir.join("include").join("capi")).unwrap();
-//             let mut file = fs::File::create(wrapper_file).unwrap();
-//             for entry_res in include_files {
-//                 let entry = entry_res.unwrap();
-//                 // If it's a header, include it in the file as a string relative to cef_dir
-//                 if entry.file_name().to_str().unwrap().ends_with(".h") {
-//                     let relative_name = entry.path().strip_prefix(&self.cef_dir).
-//                         unwrap().to_str().unwrap().replace("\\", "/");
-//                     writeln!(file, "#include \"{}\"", relative_name).unwrap();
-//                 }
-//             }
-//         } else {
-//             println!("Not writing wrapper.h because it already exists");
-//         }
-//     }
-
-//     fn generate_bindings(&self) {
-//         let out_file = PathBuf::from(env_var("OUT_DIR")).join("bindings.rs");
-//         if !out_file.is_file() {
-//             let bindings = bindgen::builder()
-//                 .header("wrapper.h")
-//                 .clang_arg("--include-directory")
-//                 .clang_arg(self.cef_dir.to_str().unwrap())
-//                 .layout_tests(false)
-//                 .derive_default(true)
-//                 // TODO: waiting for fix of https://github.com/servo/rust-bindgen/issues/648
-//                 .opaque_type("tagMONITORINFOEXA")
-//                 .generate()
-//                 .expect("Unable to generate bindings");
-//             bindings.write_to_file(out_file).map_err(|e| format!("Unable to write bindings: {}", e)).unwrap();
-//         } else {
-//             println!("Not generating bindings.rs because it already exists");
-//         }
-//     }
-
-//     fn cargo_config(&self) {
-//         // Tell the linker the lib name and the path
-//         // TODO: make this just "cef" on non-win
-//         println!("cargo:rustc-link-lib=libcef");
-//         println!("cargo:rustc-link-search={}", self.cef_dir.
-//             join(if env_var("PROFILE") == "release" { "Release" } else { "Debug" }).to_str().unwrap());
-//     }
-// }
 
 fn env_var<K: AsRef<std::ffi::OsStr>>(key: K) -> String {
     env::var(&key).expect(&format!("Unable to find env var {:?}", key.as_ref()))
