@@ -1,5 +1,4 @@
 extern crate bindgen;
-extern crate fs_extra;
 
 use std::env;
 use std::path::PathBuf;
@@ -111,36 +110,10 @@ fn config_linker() {
   );
 }
 
-fn cef_binary_dir_name() -> String {
-  match env::var("PROFILE").unwrap().as_str() {
-    "release" => String::from("Release"),
-    _ => String::from("Debug"),
-  }
-}
-
-fn copy_cef_binaries_to_target() {
-  let cef_binary_dir_name = cef_binary_dir_name();
-  let cef_binary_dir = cef_dir().join(cef_binary_dir_name);
-  let target_dir = env::var("CARGO_TARGET_DIR").unwrap();
-  // let target_dir = target_dir;
-  // let target_dir = env::var_os("CARGO_TARGET_DIR").expect("CARGO_TARGET_DIR not defined");
-
-  let options = fs_extra::dir::CopyOptions::new();
-
-  println!("Copying CEF binaries to target dir");
-  let result = fs_extra::dir::copy(cef_binary_dir, target_dir, &options);
-
-  match result {
-    Ok(_) => println!("Succeeded"),
-    Err(e) => println!("Failed with error: {}", e)
-  }
-}
-
 fn main() {
   create_wrapper_file();
   generate_bindings();
   config_linker();
-  copy_cef_binaries_to_target();
 }
 
 fn env_var<K: AsRef<std::ffi::OsStr>>(key: K) -> String {
